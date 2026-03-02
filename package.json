@@ -1,0 +1,11 @@
+{
+  "name": "courier-internal-system",
+  "version": "1.0.0",
+  "description": "Internal management system for couriers",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "check": "node --check server.js"
+  }
+}

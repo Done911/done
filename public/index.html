@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>نظام إدارة المناديب الداخلي</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app-bg"></div>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand__logo">🚚</div>
+      <div>
+        <h1>نظام إدارة المناديب</h1>
+        <p>لوحة احترافية لإدارة الموارد البشرية والمالية والعمليات اليومية</p>
+      </div>
+    </div>
+    <div class="topbar__meta">
+      <span class="chip chip--status">نظام فعّال</span>
+      <span id="currentRole" class="chip">غير مسجل</span>
+      <button id="logoutBtn" class="btn btn--danger hidden" type="button">تسجيل الخروج</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel panel--hero">
+      <div class="hero-grid">
+        <article class="hero-card"><h3>إدارة المستخدمين</h3><p>المدير العام يدير الحسابات والصلاحيات بسهولة.</p></article>
+        <article class="hero-card"><h3>متابعة يومية</h3><p>رفع الإغلاقات اليومية وربطها ماليًا مباشرة.</p></article>
+        <article class="hero-card"><h3>تحليلات ذكية</h3><p>تنبيهات HR ومؤشرات الأداء في لوحة واحدة.</p></article>
+      </div>
+    </section>
+
+    <section class="panel" data-roles="guest">
+      <div class="panel__title">
+        <h2>تسجيل الدخول</h2>
+        <span class="tag">Role Based Access</span>
+      </div>
+      <form id="loginForm" class="form">
+        <label>اسم المستخدم<input name="username" required /></label>
+        <label>كلمة المرور<input name="password" type="password" required /></label>
+        <button type="submit" class="btn btn--primary">دخول</button>
+      </form>
+      <p id="authState" class="feedback"></p>
+    </section>
+
+    <section class="panel panel--wide hidden" data-roles="general_manager">
+      <div class="panel__title">
+        <h2>إدارة المستخدمين (المدير العام)</h2>
+        <button id="refreshUsersBtn" class="btn">تحديث القائمة</button>
+      </div>
+      <form id="userForm" class="form grid">
+        <label>اسم المستخدم<input name="username" required /></label>
+        <label>كلمة المرور<input name="password" required /></label>
+        <label>الدور
+          <select name="role">
+            <option value="hr">HR</option>
+            <option value="finance">Finance</option>
+            <option value="supervisor">Supervisor</option>
+            <option value="general_manager">General Manager</option>
+          </select>
+        </label>
+        <button class="btn btn--primary grid__action" type="submit">إنشاء مستخدم</button>
+      </form>
+      <div class="table-wrap"><table id="usersTable"><thead><tr><th>ID</th><th>Username</th><th>Role</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+      <p id="userState" class="feedback"></p>
+    </section>
+
+    <section class="panel hidden" data-roles="general_manager,hr,supervisor">
+      <div class="panel__title"><h2>إضافة مندوب</h2><span class="tag">HR/Supervisor</span></div>
+      <form id="courierForm" class="form">
+        <label>اسم المندوب<input name="name" required /></label>
+        <label>رقم الجوال<input name="phone" required /></label>
+        <label>المنطقة<input name="area" /></label>
+        <label>التطبيق<input name="appName" /></label>
+        <label>انتهاء الإقامة<input name="iqamaExpiry" type="date" /></label>
+        <label>انتهاء كرت العمل<input name="workCardExpiry" type="date" /></label>
+        <label>نهاية الإجازة<input name="vacationEndDate" type="date" /></label>
+        <button type="submit" class="btn">حفظ المندوب</button>
+      </form>
+    </section>
+
+    <section class="panel panel--wide hidden" data-roles="general_manager,supervisor,finance">
+      <div class="panel__title"><h2>رفع البيانات اليومية</h2><span class="tag">Operations</span></div>
+      <form id="opsForm" class="form grid">
+        <label>معرف المندوب<input name="courierId" type="number" required /></label>
+        <label>التاريخ<input name="date" type="date" required /></label>
+        <label>الشفت<input name="shift" required /></label>
+        <label>الطلبات<input name="orders" type="number" required /></label>
+        <label>التاركت<input name="target" type="number" required /></label>
+        <label>العمولة<input name="commission" type="number" required /></label>
+        <label>السلف<input name="advances" type="number" required /></label>
+        <label>الديون<input name="debt" type="number" required /></label>
+        <label class="grid__notes">ملاحظات اليوم<input name="notes" /></label>
+        <button type="submit" class="btn btn--primary grid__action">حفظ الإغلاق</button>
+      </form>
+    </section>
+
+    <section class="panel panel--wide hidden" data-roles="general_manager,hr,supervisor">
+      <div class="panel__title"><h2>استيراد المناديب من CSV</h2><span class="tag">Bulk Import</span></div>
+      <form id="importForm" class="form"><input id="importFile" type="file" accept=".csv" required /><button class="btn" type="submit">استيراد</button></form>
+      <p id="importState" class="feedback"></p>
+    </section>
+
+    <section class="panel panel--wide hidden" data-roles="general_manager,hr,finance">
+      <div class="panel__title"><h2>لوحة التحليلات</h2><button id="insightsBtn" class="btn">تحديث</button></div>
+      <pre id="insights">قم بتسجيل الدخول ثم اضغط تحديث لعرض التحليلات.</pre>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

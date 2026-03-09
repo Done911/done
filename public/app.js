@@ -1,147 +1,163 @@
 let token = '';
 let currentUser = null;
 
+const currentRoleChip = document.getElementById('currentRole');
 const authState = document.getElementById('authState');
 const insights = document.getElementById('insights');
-const importState = document.getElementById('importState');
-const userState = document.getElementById('userState');
-const currentRoleChip = document.getElementById('currentRole');
 
-function toast(el, message, isError = false) {
+function notify(el, message, isError = false) {
   if (!el) return;
   el.textContent = message;
   el.style.color = isError ? '#fb7185' : '#86efac';
 }
 
 async function api(path, method = 'GET', body) {
-  const res = await fetch(path, {
+  const response = await fetch(path, {
     method,
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {})
     },
-    ...(body ? { body: JSON.stringify(body) } : {})
+    body: body ? JSON.stringify(body) : undefined
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'API error');
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'request failed');
   return data;
-}
-
-function parseCsv(text) {
-  const lines = text.split(/\r?\n/).filter(Boolean);
-  if (lines.length < 2) return [];
-  const headers = lines[0].split(',').map(h => h.trim());
-  return lines.slice(1).map(line => {
-    const vals = line.split(',').map(v => v.trim());
-    const row = {};
-    headers.forEach((h, i) => row[h] = vals[i] || '');
-    return row;
-  });
 }
 
 function applyRoleUI() {
   const role = currentUser?.role || 'guest';
   currentRoleChip.textContent = role;
-  document.querySelectorAll('[data-roles]').forEach(el => {
-    const roles = el.getAttribute('data-roles').split(',').map(x => x.trim());
+  document.querySelectorAll('[data-roles]').forEach((el) => {
+    const roles = el.getAttribute('data-roles').split(',');
     el.classList.toggle('hidden', !roles.includes(role));
   });
 }
 
-async function refreshUsers() {
-  if (currentUser?.role !== 'general_manager') return;
-  const tbody = document.querySelector('#usersTable tbody');
-  const list = await api('/api/users');
-  tbody.innerHTML = '';
-  list.forEach(u => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${u.id}</td><td>${u.username}</td><td>${u.role}</td><td><button class="btn small-btn" data-id="${u.id}" data-active="${u.active}">${u.active ? 'تعطيل' : 'تفعيل'}</button></td>`;
-    tbody.appendChild(tr);
-  });
+function renderDashboard(data) {
+  const cards = document.getElementById('dashboardCards');
+  const items = [
+    ['عدد المناديب', data.drivers_count],
+    ['عدد السيارات', data.vehicles_count],
+    ['عدد التطبيقات', data.applications_count],
+    ['الحسابات المؤجرة', data.rented_accounts_count],
+    ['طلبات اليوم', data.today_orders_count],
+    ['إيرادات اليوم', data.today_revenue_total],
+    ['صافي الربح', data.profit.net_profit]
+  ];
+  cards.innerHTML = items.map(([title, value]) => `<article class="stat"><h3>${title}</h3><p>${value}</p></article>`).join('');
 }
 
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const fd = new FormData(e.target);
+async function refreshDashboard() {
   try {
-    const data = await api('/api/auth/login', 'POST', { username: fd.get('username'), password: fd.get('password') });
+    const data = await api('/api/dashboard');
+    renderDashboard(data);
+  } catch (error) {
+    notify(authState, error.message, true);
+  }
+}
+
+async function refreshInsights() {
+  try {
+    const analytics = await api('/api/ai-analytics');
+    const alerts = await api('/api/smart-alerts');
+    insights.textContent = JSON.stringify({ analytics, alerts }, null, 2);
+  } catch (error) {
+    insights.textContent = `خطأ: ${error.message}`;
+  }
+}
+
+document.getElementById('loginForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = new FormData(event.target);
+  try {
+    const data = await api('/api/auth/login', 'POST', {
+      username: form.get('username'),
+      password: form.get('password')
+    });
     token = data.token;
     currentUser = data.user;
+    notify(authState, `مرحباً ${currentUser.username}`);
     applyRoleUI();
-    toast(authState, `تم تسجيل الدخول: ${currentUser.username} (${currentUser.role})`);
-    if (currentUser.role === 'general_manager') await refreshUsers();
-  } catch (err) {
-    toast(authState, err.message, true);
+    await refreshDashboard();
+    await refreshInsights();
+  } catch (error) {
+    notify(authState, error.message, true);
   }
 });
 
-document.getElementById('userForm')?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const fd = new FormData(e.target);
+document.getElementById('driverForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = new FormData(event.target);
   try {
-    await api('/api/users', 'POST', { username: fd.get('username'), password: fd.get('password'), role: fd.get('role') });
-    toast(userState, 'تم إنشاء المستخدم بنجاح');
-    e.target.reset();
-    await refreshUsers();
-  } catch (err) {
-    toast(userState, err.message, true);
+    await api('/api/drivers', 'POST', Object.fromEntries(form.entries()));
+    notify(authState, 'تم حفظ المندوب');
+    event.target.reset();
+    await refreshDashboard();
+  } catch (error) {
+    notify(authState, error.message, true);
   }
 });
 
-document.getElementById('refreshUsersBtn')?.addEventListener('click', refreshUsers);
-
-document.querySelector('#usersTable tbody')?.addEventListener('click', async (e) => {
-  const btn = e.target.closest('button[data-id]');
-  if (!btn) return;
+document.getElementById('appForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = new FormData(event.target);
   try {
-    await api(`/api/users/${btn.dataset.id}`, 'PUT', { active: btn.dataset.active !== 'true' });
-    await refreshUsers();
-  } catch (err) {
-    toast(userState, err.message, true);
-  }
-});
-
-document.getElementById('courierForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const fd = new FormData(e.target);
-  try {
-    const courier = await api('/api/couriers', 'POST', {
-      name: fd.get('name'), phone: fd.get('phone'), area: fd.get('area'), appName: fd.get('appName'),
-      iqamaExpiry: fd.get('iqamaExpiry') || null, workCardExpiry: fd.get('workCardExpiry') || null, vacationEndDate: fd.get('vacationEndDate') || null
+    await api('/api/applications', 'POST', {
+      app_name: form.get('app_name'),
+      target_type: form.get('target_type'),
+      target_value: Number(form.get('target_value'))
     });
-    toast(authState, `تم حفظ المندوب ID ${courier.id}`);
-    e.target.reset();
-  } catch (err) { toast(authState, err.message, true); }
+    notify(authState, 'تم حفظ التطبيق');
+    event.target.reset();
+    await refreshDashboard();
+  } catch (error) {
+    notify(authState, error.message, true);
+  }
 });
 
-document.getElementById('opsForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const fd = new FormData(e.target);
+document.getElementById('accountForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = new FormData(event.target);
   try {
-    await api('/api/daily-ops', 'POST', {
-      courierId: Number(fd.get('courierId')), date: fd.get('date'), shift: fd.get('shift'),
-      orders: Number(fd.get('orders')), target: Number(fd.get('target')), commission: Number(fd.get('commission')),
-      advances: Number(fd.get('advances')), debt: Number(fd.get('debt')), notes: fd.get('notes')
+    await api('/api/accounts', 'POST', {
+      app_id: Number(form.get('app_id')),
+      real_user_name: form.get('real_user_name'),
+      real_user_iqama: form.get('real_user_iqama'),
+      real_user_phone: form.get('real_user_phone')
     });
-    toast(authState, 'تم حفظ الإغلاق اليومي');
-    e.target.reset();
-  } catch (err) { toast(authState, err.message, true); }
+    notify(authState, 'تم حفظ الحساب');
+    event.target.reset();
+  } catch (error) {
+    notify(authState, error.message, true);
+  }
 });
 
-document.getElementById('importForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const file = document.getElementById('importFile').files[0];
-  if (!file) return;
+document.getElementById('dailyForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = new FormData(event.target);
   try {
-    const rows = parseCsv(await file.text());
-    const data = await api('/api/couriers/import', 'POST', { rows });
-    toast(importState, `تم استيراد ${data.importedCount} مندوب`);
-  } catch (err) { toast(importState, err.message, true); }
+    await api('/api/daily-operations', 'POST', {
+      date: form.get('date'),
+      driver_id: Number(form.get('driver_id')),
+      app_id: Number(form.get('app_id')),
+      account_id: Number(form.get('account_id')),
+      orders_count: Number(form.get('orders_count')),
+      total_revenue: Number(form.get('total_revenue')),
+      shift_start: form.get('shift_start'),
+      shift_end: form.get('shift_end'),
+      shift_hours: Number(form.get('shift_hours'))
+    });
+    notify(authState, 'تم حفظ العملية اليومية');
+    event.target.reset();
+    await refreshDashboard();
+    await refreshInsights();
+  } catch (error) {
+    notify(authState, error.message, true);
+  }
 });
 
-document.getElementById('insightsBtn').addEventListener('click', async () => {
-  try { insights.textContent = JSON.stringify(await api('/api/insights'), null, 2); }
-  catch (err) { insights.textContent = `خطأ: ${err.message}`; }
-});
+document.getElementById('refreshDashboardBtn').addEventListener('click', refreshDashboard);
+document.getElementById('refreshInsightsBtn').addEventListener('click', refreshInsights);
 
 applyRoleUI();

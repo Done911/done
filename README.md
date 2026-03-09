@@ -1,51 +1,61 @@
-# نظام داخلي متكامل لإدارة المناديب (MVP)
+# Delivery Company Management System (ERP-Style MVP)
 
-هذا المشروع يقدّم نسخة أولية تعمل محليًا وتشمل:
+منصة تشغيل داخلية لإدارة شركة مناديب توصيل مع صلاحيات إدارية متعددة، متابعة تشغيل يومي، إدارة مالية، وتحليلات ذكية.
 
-- صلاحيات متعددة (المدير العام، الموارد البشرية، المالية، المشرف).
-- إدارة المناديب.
-- إدخال العمليات اليومية (طلبات/تاركت/عمولة/سلف/ديون).
-- ربط مالي تلقائي من إغلاق اليوم.
-- تحليلات ذكية مبدئية (Top performers + Risk cases).
-- تصدير CSV يومي كخطوة أولى قبل الربط المباشر مع Google Sheets/Excel API.
+## Tech Stack الحالي في هذا المستودع
 
-## التشغيل
+- Backend: Node.js HTTP Server (قابل للتحويل إلى Express بسهولة)
+- Frontend: HTML/CSS/JS (واجهة RTL متجاوبة)
+- Database (Production Design): PostgreSQL schema في `docs/postgres-schema.sql`
+- Auth: JWT + Role-Based Access Control
+
+> ملاحظة: المشروع هنا نسخة MVP عملية محلية، مع تصميم قاعدة بيانات إنتاجي كامل يغطي كل الجداول المطلوبة.
+
+## Roles
+
+- `general_manager`: صلاحيات كاملة
+- `hr`: إدارة المندوبين/الوثائق/السيارات
+- `finance`: إدارة المعاملات المالية والتقارير
+- `supervisor`: العمليات اليومية والتطبيقات والحسابات
+
+## Run
 
 ```bash
 npm start
 ```
 
-ثم افتح:
+ثم افتح: `http://localhost:3000`
 
-- `http://localhost:3000`
-
-## حسابات تجريبية
+## Demo Accounts
 
 - `admin / admin123`
 - `hr / hr123`
 - `finance / finance123`
 - `supervisor / supervisor123`
 
-## واجهات API الأساسية
+## Core APIs
 
 - `POST /api/auth/login`
-- `POST /api/couriers`
-- `GET /api/couriers`
-- `POST /api/daily-ops`
-- `GET /api/finance`
-- `GET /api/insights`
-- `GET /api/export/daily-ops.csv`
+- `POST/GET /api/drivers`
+- `POST/GET /api/driver-documents`
+- `POST/GET /api/vehicles`
+- `POST/GET /api/applications`
+- `POST/GET /api/accounts`
+- `POST/GET /api/account-rentals`
+- `POST/GET /api/daily-operations`
+- `POST/GET /api/finance-transactions`
+- `GET /api/wallets`
+- `GET /api/dashboard`
+- `GET /api/profit-analysis`
+- `GET /api/ai-analytics`
+- `GET /api/smart-alerts`
+- `GET /api/reports?type=driver_performance&format=json|excel|pdf`
 
-## ملاحظات مهمة
+## Supported business modules
 
-- هذا MVP تعليمي سريع، والبيانات محفوظة في الذاكرة.
-- ملف `docs/postgres-schema.sql` يحتوي تصميم PostgreSQL جاهز للانتقال للإنتاج.
-- للربط الفعلي مع Google Sheets/Excel، يوصى بإضافة خدمة تكامل مستقلة مع OAuth وJob Scheduler.
-
-
-## تحديثات جديدة
-
-- إضافة **خانة ملاحظات يومية** ضمن رفع عمليات المندوب اليومية.
-- إضافة **مؤشرات موارد بشرية ذكية** ضمن التحليلات: انتهاء الإقامة، انتهاء كرت العمل، ونهاية الإجازة القريبة.
-- إضافة **استيراد مناديب من ملف CSV (Excel-compatible)** مع تصنيف التطبيق (`appName`) مثل: كيتا، جاهز، نينجا.
-- يتم عرض تنبيهات HR وتوزيع المناديب حسب التطبيق داخل لوحة التحليلات.
+- إدارة المناديب + الوثائق + المركبات
+- إدارة التطبيقات، الحسابات، وتأجير الحسابات
+- العمليات اليومية مع حساب `target_progress_percentage` تلقائيًا
+- محفظة مالية لكل مندوب + تتبع ربح الشركة
+- تقارير (JSON / CSV كـ Excel / PDF simulated)
+- تحليلات AI تشغيلية وتنبيهات ذكية
